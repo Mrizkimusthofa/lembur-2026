@@ -1,39 +1,186 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3652/3652191.png">
-
-<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3652/3652191.png">
-    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kalkulator Lembur 2026 - Auto Save</title>
+    <title>Kalkulator Lembur & Gaji 2026</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
-        .header { text-align: center; margin-bottom: 10px; }
-        .summary { 
-            position: sticky; top: 10px; background: white; padding: 20px;
-            border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin-bottom: 25px; z-index: 100; display: flex; justify-content: space-around;
-            border-top: 5px solid #2980b9;
+        :root { --primary: #2980b9; --success: #27ae60; --danger: #e74c3c; --bg: #f4f7f6; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); padding: 15px; color: #333; margin: 0; }
+        .header { text-align: center; margin-bottom: 15px; }
+        
+        /* Dashboard Summary */
+        .summary-card { 
+            background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            padding: 20px; margin-bottom: 20px; position: sticky; top: 10px; z-index: 1000;
+            border-top: 5px solid var(--primary);
         }
-        .calendar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .main-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: center; }
+        .thp-box { grid-column: span 2; background: #ebf5fb; padding: 10px; border-radius: 8px; margin-top: 10px; }
+        .thp-box span { font-size: 1.8em; color: var(--success); display: block; }
+        .stat-item label { font-size: 0.8em; color: #7f8c8d; font-weight: bold; text-transform: uppercase; }
+        .stat-item div { font-size: 1.1em; font-weight: bold; color: #2c3e50; }
+
+        /* Calendar Styles */
+        .calendar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; }
         .month { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .month-name { text-align: center; font-weight: bold; margin-bottom: 10px; color: #2c3e50; font-size: 1.2em; }
-        .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-        .day-name { text-align: center; font-size: 0.75em; font-weight: bold; color: #95a5a6; padding-bottom: 5px; }
+        .month-name { text-align: center; font-weight: bold; margin-bottom: 10px; color: var(--primary); }
+        .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+        .day-name { text-align: center; font-size: 0.7em; font-weight: bold; color: #95a5a6; }
         .day { 
-            padding: 10px 0; text-align: center; cursor: pointer; border-radius: 6px; 
-            font-size: 0.9em; transition: 0.2s; border: 1px solid #f0f0f0; position: relative;
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; border-radius: 6px; font-size: 0.85em; border: 1px solid #f0f0f0;
         }
-        .day:hover { background: #f1f2f6; border-color: #d1d8e0; }
-        .day.selected { background: #27ae60 !important; color: white !important; font-weight: bold; border-color: #219150; }
-        .day.weekend { color: #e74c3c; font-weight: bold; background: #fff5f5; }
-        .day.holiday { color: white; background: #e74c3c; font-weight: bold; }
-        .empty { visibility: hidden; border: none; }
-        .stat-box { text-align: center; }
-        .stat-box span { display: block; font-size: 1.6em; font-weight: bold; color: #2980b9; }
-        .btn-reset { 
+        .day.weekend { background: #fff5f5; color: var(--danger); font-weight: bold; }
+        .day.holiday { background: var(--danger); color: white; font-weight: bold; }
+        .day.selected { background: var(--success) !important; color: white !important; font-weight: bold; }
+        .empty { visibility: hidden; }
+
+        .btn-reset { width: 100%; background: #95a5a6; color: white; border: none; padding: 8px; border-radius: 5px; margin-top: 15px; cursor: pointer; }
+        .legend { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; font-size: 0.7em; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h3 style="margin:0">Kalkulator Gaji & Lembur 2026</h3>
+    <div class="legend">
+        <span>⚪ Biasa (5.5j)</span>
+        <span>🔴 Sab/Min (14j)</span>
+        <span>🔥 Libur (21j)</span>
+    </div>
+</div>
+
+<div class="summary-card">
+    <div class="main-stats">
+        <div class="stat-item"><label>Total Jam</label><div id="totalHours">0</div></div>
+        <div class="stat-item"><label>Uang Lembur</label><div id="otPay">Rp 0</div></div>
+        <div class="stat-item"><label>Gaji Bruto</label><div id="grossSalary">Rp 0</div></div>
+        <div class="stat-item"><label>Pajak PPh21</label><div id="pph21" style="color:#e74c3c">Rp 0</div></div>
+        <div class="thp-box"><label>Estimasi Gaji Bersih (THP)</label><span id="thp">Rp 0</span></div>
+    </div>
+    <button class="btn-reset" onclick="resetData()">Reset Data</button>
+</div>
+
+<div id="calendarContainer" class="calendar-grid"></div>
+
+<script>
+    // DATA KONFIGURASI DARI USER
+    const CONFIG = {
+        fixedSalary: 6531037,
+        otRate: 33491.54,
+        fixedDeductions: 336880, // Potongan non-pajak (BPJS, PUK, dll)
+        taxReduction: 225880,   // Iuran pengurang pajak
+        ptkp: 54000000          // TK/0
+    };
+
+    let selectedDates = new Set(JSON.parse(localStorage.getItem('lembur_data_v2')) || []);
+
+    const holidays2026 = {
+        "2026-01-01": "Tahun Baru", "2026-01-15": "Isra Mi'raj", "2026-02-17": "Imlek",
+        "2026-03-20": "Nyepi", "2026-03-31": "Idul Fitri 1", "2026-04-01": "Idul Fitri 2",
+        "2026-05-01": "Hari Buruh", "2026-05-14": "Kenaikan Yesus", "2026-05-31": "Waisak",
+        "2026-06-01": "Hari Lahir Pancasila", "2026-06-06": "Idul Adha", "2026-06-27": "Tahun Baru Islam",
+        "2026-08-17": "Hari Kemerdekaan RI", "2026-09-05": "Maulid Nabi", "2026-12-25": "Natal"
+    };
+
+    function formatIDR(num) {
+        return "Rp " + Math.round(num).toLocaleString('id-ID');
+    }
+
+    function calculateEverything() {
+        let totalHours = 0;
+        selectedDates.forEach(dateStr => {
+            const date = new Date(dateStr);
+            if (holidays2026[dateStr]) totalHours += 21;
+            else if (date.getDay() === 0 || date.getDay() === 6) totalHours += 14;
+            else totalHours += 5.5;
+        });
+
+        // 1. Upah Lembur
+        const otPay = totalHours * CONFIG.otRate;
+        
+        // 2. Gaji Bruto
+        const gross = CONFIG.fixedSalary + otPay;
+
+        // 3. Hitung PPh21 (Sesuai Logika User)
+        const biayaJabatan = Math.min(gross * 0.05, 500000);
+        const netoMonthly = gross - biayaJabatan - CONFIG.taxReduction;
+        const netoYearly = netoMonthly * 12;
+        const pkp = Math.max(0, netoYearly - CONFIG.ptkp);
+        
+        let taxYearly = 0;
+        if (pkp <= 60000000) {
+            taxYearly = pkp * 0.05;
+        } else {
+            taxYearly = (60000000 * 0.05) + ((pkp - 60000000) * 0.15);
+        }
+        const taxMonthly = taxYearly / 12;
+
+        // 4. Take Home Pay
+        const thp = gross - CONFIG.fixedDeductions - taxMonthly;
+
+        // Update UI
+        document.getElementById('totalHours').innerText = totalHours + " Jam";
+        document.getElementById('otPay').innerText = formatIDR(otPay);
+        document.getElementById('grossSalary').innerText = formatIDR(gross);
+        document.getElementById('pph21').innerText = "-" + formatIDR(taxMonthly);
+        document.getElementById('thp').innerText = formatIDR(thp);
+        
+        localStorage.setItem('lembur_data_v2', JSON.stringify(Array.from(selectedDates)));
+    }
+
+    function generateCalendar() {
+        const container = document.getElementById('calendarContainer');
+        const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+        
+        for (let m = 0; m < 12; m++) {
+            let html = `<div class="month"><div class="month-name">${months[m]} 2026</div><div class="days-grid">`;
+            ["M", "S", "S", "R", "K", "J", "S"].forEach(d => html += `<div class="day-name">${d}</div>`);
+
+            const firstDay = new Date(2026, m, 1).getDay();
+            const daysInMonth = new Date(2026, m + 1, 0).getDate();
+
+            for (let i = 0; i < firstDay; i++) html += `<div class="day empty"></div>`;
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `2026-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const dateObj = new Date(2026, m, d);
+                const isHoliday = holidays2026[dateStr];
+                const isWeekend = (dateObj.getDay() === 0 || dateObj.getDay() === 6);
+                const selected = selectedDates.has(dateStr) ? 'selected' : '';
+                
+                html += `<div class="day ${isHoliday?'holiday':(isWeekend?'weekend':'')} ${selected}" 
+                         onclick="toggleDate('${dateStr}', this)">${d}</div>`;
+            }
+            container.innerHTML += html + `</div></div>`;
+        }
+    }
+
+    function toggleDate(dateStr, el) {
+        if (selectedDates.has(dateStr)) {
+            selectedDates.delete(dateStr);
+            el.classList.remove('selected');
+        } else {
+            selectedDates.add(dateStr);
+            el.classList.add('selected');
+        }
+        calculateEverything();
+    }
+
+    function resetData() {
+        if(confirm("Hapus semua catatan?")) {
+            selectedDates.clear();
+            document.querySelectorAll('.day.selected').forEach(d => d.classList.remove('selected'));
+            calculateEverything();
+        }
+    }
+
+    generateCalendar();
+    calculateEverything();
+</script>
+</body>
+</html>
             background: #e74c3c; color: white; border: none; padding: 10px 20px; 
             border-radius: 5px; cursor: pointer; margin-top: 10px; font-weight: bold;
         }
