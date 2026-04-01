@@ -9,7 +9,6 @@
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); padding: 15px; color: #333; margin: 0; }
         .header { text-align: center; margin-bottom: 15px; }
         
-        /* Dashboard Summary */
         .summary-card { 
             background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             padding: 20px; margin-bottom: 20px; position: sticky; top: 10px; z-index: 1000;
@@ -21,7 +20,6 @@
         .stat-item label { font-size: 0.8em; color: #7f8c8d; font-weight: bold; text-transform: uppercase; }
         .stat-item div { font-size: 1.1em; font-weight: bold; color: #2c3e50; }
 
-        /* Calendar Styles */
         .calendar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; }
         .month { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .month-name { text-align: center; font-weight: bold; margin-bottom: 10px; color: var(--primary); }
@@ -32,7 +30,7 @@
             cursor: pointer; border-radius: 6px; font-size: 0.85em; border: 1px solid #f0f0f0;
         }
         .day.weekend { background: #fff5f5; color: var(--danger); font-weight: bold; }
-        .day.holiday { background: var(--danger); color: white; font-weight: bold; }
+        .day.holiday { background: var(--danger); color: white !important; font-weight: bold; }
         .day.selected { background: var(--success) !important; color: white !important; font-weight: bold; }
         .empty { visibility: hidden; }
 
@@ -65,23 +63,31 @@
 <div id="calendarContainer" class="calendar-grid"></div>
 
 <script>
-    // DATA KONFIGURASI DARI USER
     const CONFIG = {
         fixedSalary: 6531037,
         otRate: 33491.54,
-        fixedDeductions: 336880, // Potongan non-pajak (BPJS, PUK, dll)
-        taxReduction: 225880,   // Iuran pengurang pajak
-        ptkp: 54000000          // TK/0
+        fixedDeductions: 336880, 
+        taxReduction: 225880,   
+        ptkp: 54000000          
     };
 
     let selectedDates = new Set(JSON.parse(localStorage.getItem('lembur_data_v2')) || []);
 
+    // UPDATE: Tanggal 31 Maret & 1 April sudah dihapus dari daftar merah
     const holidays2026 = {
-        "2026-01-01": "Tahun Baru", "2026-01-15": "Isra Mi'raj", "2026-02-17": "Imlek",
-        "2026-03-20": "Nyepi", "2026-03-31": "Idul Fitri 1", "2026-04-01": "Idul Fitri 2",
-        "2026-05-01": "Hari Buruh", "2026-05-14": "Kenaikan Yesus", "2026-05-31": "Waisak",
-        "2026-06-01": "Hari Lahir Pancasila", "2026-06-06": "Idul Adha", "2026-06-27": "Tahun Baru Islam",
-        "2026-08-17": "Hari Kemerdekaan RI", "2026-09-05": "Maulid Nabi", "2026-12-25": "Natal"
+        "2026-01-01": "Tahun Baru", 
+        "2026-01-15": "Isra Mi'raj", 
+        "2026-02-17": "Imlek",
+        "2026-03-20": "Nyepi/Jumat Agung",
+        "2026-05-01": "Hari Buruh", 
+        "2026-05-14": "Kenaikan Yesus", 
+        "2026-05-31": "Waisak",
+        "2026-06-01": "Hari Lahir Pancasila", 
+        "2026-06-06": "Idul Adha", 
+        "2026-06-27": "Tahun Baru Islam",
+        "2026-08-17": "Kemerdekaan RI", 
+        "2026-09-05": "Maulid Nabi", 
+        "2026-12-25": "Natal"
     };
 
     function formatIDR(num) {
@@ -91,39 +97,87 @@
     function calculateEverything() {
         let totalHours = 0;
         selectedDates.forEach(dateStr => {
-            const date = new Date(dateStr);
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const date = new Date(y, m - 1, d);
             if (holidays2026[dateStr]) totalHours += 21;
             else if (date.getDay() === 0 || date.getDay() === 6) totalHours += 14;
             else totalHours += 5.5;
         });
 
-        // 1. Upah Lembur
         const otPay = totalHours * CONFIG.otRate;
-        
-        // 2. Gaji Bruto
         const gross = CONFIG.fixedSalary + otPay;
-
-        // 3. Hitung PPh21 (Sesuai Logika User)
         const biayaJabatan = Math.min(gross * 0.05, 500000);
         const netoMonthly = gross - biayaJabatan - CONFIG.taxReduction;
         const netoYearly = netoMonthly * 12;
         const pkp = Math.max(0, netoYearly - CONFIG.ptkp);
         
         let taxYearly = 0;
-        if (pkp <= 60000000) {
-            taxYearly = pkp * 0.05;
-        } else {
-            taxYearly = (60000000 * 0.05) + ((pkp - 60000000) * 0.15);
-        }
+        if (pkp <= 60000000) taxYearly = pkp * 0.05;
+        else taxYearly = (60000000 * 0.05) + ((pkp - 60000000) * 0.15);
+        
         const taxMonthly = taxYearly / 12;
-
-        // 4. Take Home Pay
         const thp = gross - CONFIG.fixedDeductions - taxMonthly;
 
-        // Update UI
         document.getElementById('totalHours').innerText = totalHours + " Jam";
         document.getElementById('otPay').innerText = formatIDR(otPay);
         document.getElementById('grossSalary').innerText = formatIDR(gross);
+        document.getElementById('pph21').innerText = "-" + formatIDR(taxMonthly);
+        document.getElementById('thp').innerText = formatIDR(thp);
+        
+        localStorage.setItem('lembur_data_v2', JSON.stringify(Array.from(selectedDates)));
+    }
+
+    function generateCalendar() {
+        const container = document.getElementById('calendarContainer');
+        const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+        
+        for (let m = 0; m < 12; m++) {
+            let html = `<div class="month"><div class="month-name">${months[m]} 2026</div><div class="days-grid">`;
+            ["M", "S", "S", "R", "K", "J", "S"].forEach(d => html += `<div class="day-name">${d}</div>`);
+
+            const firstDay = new Date(2026, m, 1).getDay();
+            const daysInMonth = new Date(2026, m + 1, 0).getDate();
+
+            for (let i = 0; i < firstDay; i++) html += `<div class="day empty"></div>`;
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `2026-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const dateObj = new Date(2026, m, d);
+                const isHoliday = holidays2026[dateStr];
+                const isWeekend = (dateObj.getDay() === 0 || dateObj.getDay() === 6);
+                const selected = selectedDates.has(dateStr) ? 'selected' : '';
+                
+                html += `<div class="day ${isHoliday?'holiday':(isWeekend?'weekend':'')} ${selected}" 
+                         onclick="toggleDate('${dateStr}', this)">${d}</div>`;
+            }
+            container.innerHTML += html + `</div></div>`;
+        }
+    }
+
+    function toggleDate(dateStr, el) {
+        if (selectedDates.has(dateStr)) {
+            selectedDates.delete(dateStr);
+            el.classList.remove('selected');
+        } else {
+            selectedDates.add(dateStr);
+            el.classList.add('selected');
+        }
+        calculateEverything();
+    }
+
+    function resetData() {
+        if(confirm("Hapus semua catatan?")) {
+            selectedDates.clear();
+            document.querySelectorAll('.day.selected').forEach(d => d.classList.remove('selected'));
+            calculateEverything();
+        }
+    }
+
+    generateCalendar();
+    calculateEverything();
+</script>
+</body>
+</html>        document.getElementById('grossSalary').innerText = formatIDR(gross);
         document.getElementById('pph21').innerText = "-" + formatIDR(taxMonthly);
         document.getElementById('thp').innerText = formatIDR(thp);
         
